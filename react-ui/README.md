@@ -1,6 +1,6 @@
 # ZO UI Example
 
-A React example app that integrates the [ZO Finance](https://zofai.com) trading widget with Sui wallet connectivity.
+A React example app that integrates the [ZO Finance](https://zofai.io) trading widget with Sui wallet connectivity.
 
 ## Stack
 
