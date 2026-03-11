@@ -3,7 +3,7 @@
  */
 import dotenv from 'dotenv';
 import { runGridBot } from './grid-bot';
-import { LPToken } from 'zo-sdk';
+import { LPToken } from '@zofai/zo-sdk';
 
 dotenv.config();
 

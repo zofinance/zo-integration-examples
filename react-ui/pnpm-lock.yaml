@@ -21,8 +21,11 @@ importers:
         specifier: ^66.0.0
         version: 66.6.2
       '@zofai/trading-widget':
-        specifier: ^0.1.1
-        version: 0.1.1(@mysten/dapp-kit-react@1.1.0(@mysten/sui@2.5.0(typescript@5.8.3))(@types/react@18.3.28)(react@18.3.1)(typescript@5.8.3))(@mysten/sui@2.5.0(typescript@5.8.3))(@tanstack/react-query@5.90.21(react@18.3.1))(axios@1.13.6)(jotai@2.18.0(@babel/core@7.29.0)(@babel/template@7.28.6)(@types/react@18.3.28)(react@18.3.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(typescript@5.8.3)(zo-sdk@0.1.92(typescript@5.8.3))
+        specifier: ^0.1.2
+        version: 0.1.2(@mysten/dapp-kit-react@1.1.0(@mysten/sui@2.5.0(typescript@5.8.3))(@types/react@18.3.28)(react@18.3.1)(typescript@5.8.3))(@mysten/sui@2.5.0(typescript@5.8.3))(@tanstack/react-query@5.90.21(react@18.3.1))(@zofai/zo-sdk@0.1.96(typescript@5.8.3))(axios@1.13.6)(jotai@2.18.0(@babel/core@7.29.0)(@babel/template@7.28.6)(@types/react@18.3.28)(react@18.3.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(typescript@5.8.3)
+      '@zofai/zo-sdk':
+        specifier: ^0.1.96
+        version: 0.1.96(typescript@5.8.3)
       jotai:
         specifier: ^2.10.0
         version: 2.18.0(@babel/core@7.29.0)(@babel/template@7.28.6)(@types/react@18.3.28)(react@18.3.1)
@@ -32,9 +35,6 @@ importers:
       react-dom:
         specifier: ^18.3.1
         version: 18.3.1(react@18.3.1)
-      zo-sdk:
-        specifier: ^0.1.0
-        version: 0.1.92(typescript@5.8.3)
     devDependencies:
       '@types/react':
         specifier: ^18.3.11
@@ -862,16 +862,19 @@ packages:
       axios: ^0.x || ^1.0.0
       zod: ^3.x
 
-  '@zofai/trading-widget@0.1.1':
-    resolution: {integrity: sha512-zB3UB303Vgzo+5Vk52cdJq46RltWxJYGQXmeREbCggAShgRLGQlrJQMNkS7S5xycCYF3RfZ2L6EP1KH/JX108w==}
+  '@zofai/trading-widget@0.1.2':
+    resolution: {integrity: sha512-gaztqCGmxNuszrzZ1/A0+9aqy2+acBw1hoSVRp1hmnSCdda99Ycylcv6CDfvXcQ8eq3V13obDArpCodyTFuCHQ==}
     peerDependencies:
       '@mysten/dapp-kit-react': '>=1.0.0'
       '@mysten/sui': '>=2.0.0'
       '@tanstack/react-query': '>=5.0.0'
+      '@zofai/zo-sdk': ^0.1.95
       jotai: '>=2.0.0'
       react: '>=18.0.0'
       react-dom: '>=18.0.0'
-      zo-sdk: '>=0.1.0'
+
+  '@zofai/zo-sdk@0.1.96':
+    resolution: {integrity: sha512-AVb+eu1VxcglNXcpX+rwmz2Znvn1pOn09idEI9wpx3wheMTriellWHrFX2uw04KwhRnJdChWWvkbWFKgfmVV6Q==}
 
   acorn@8.16.0:
     resolution: {integrity: sha512-UVJyE9MttOsBQIDKw1skb9nAwQuR5wuGD3+82K6JgJlm/Y+KI92oNsMNGZCYdDsVtRHSak0pcV5Dno5+4jh9sw==}
@@ -1508,9 +1511,6 @@ packages:
   yocto-queue@1.2.2:
     resolution: {integrity: sha512-4LCcse/U2MHZ63HAJVE+v71o7yOdIe4cZ70Wpf8D/IyjDKYQLV5GD46B+hSTjJsvV5PztjvHoU580EftxjDZFQ==}
     engines: {node: '>=12.20'}
-
-  zo-sdk@0.1.92:
-    resolution: {integrity: sha512-5gYp8YKhbKEKZCMps6SFbsbbHCZ199KPJpkW6WDmFR4BEUuh5KpNqQLPBuP5x3uWEK0ut9ryMrX+q3wIZOZu4g==}
 
   zod@3.25.76:
     resolution: {integrity: sha512-gzUt/qt81nXsFGKIFcC3YnfEAx5NkunCfnDlvuBSSFS02bcXu4Lmea0AFIUwbLWxWPx3d9p8S5QoaujKcNQxcQ==}
@@ -2166,7 +2166,7 @@ snapshots:
 
   '@scure/bip32@1.7.0':
     dependencies:
-      '@noble/curves': 1.9.4
+      '@noble/curves': 1.9.7
       '@noble/hashes': 1.8.0
       '@scure/base': 1.2.6
 
@@ -2445,7 +2445,7 @@ snapshots:
       axios: 1.13.6
       zod: 3.25.76
 
-  '@zofai/trading-widget@0.1.1(@mysten/dapp-kit-react@1.1.0(@mysten/sui@2.5.0(typescript@5.8.3))(@types/react@18.3.28)(react@18.3.1)(typescript@5.8.3))(@mysten/sui@2.5.0(typescript@5.8.3))(@tanstack/react-query@5.90.21(react@18.3.1))(axios@1.13.6)(jotai@2.18.0(@babel/core@7.29.0)(@babel/template@7.28.6)(@types/react@18.3.28)(react@18.3.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(typescript@5.8.3)(zo-sdk@0.1.92(typescript@5.8.3))':
+  '@zofai/trading-widget@0.1.2(@mysten/dapp-kit-react@1.1.0(@mysten/sui@2.5.0(typescript@5.8.3))(@types/react@18.3.28)(react@18.3.1)(typescript@5.8.3))(@mysten/sui@2.5.0(typescript@5.8.3))(@tanstack/react-query@5.90.21(react@18.3.1))(@zofai/zo-sdk@0.1.96(typescript@5.8.3))(axios@1.13.6)(jotai@2.18.0(@babel/core@7.29.0)(@babel/template@7.28.6)(@types/react@18.3.28)(react@18.3.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(typescript@5.8.3)':
     dependencies:
       '@cetusprotocol/aggregator-sdk': 1.4.5(axios@1.13.6)(typescript@5.8.3)
       '@mysten/dapp-kit-react': 1.1.0(@mysten/sui@2.5.0(typescript@5.8.3))(@types/react@18.3.28)(react@18.3.1)(typescript@5.8.3)
@@ -2453,6 +2453,7 @@ snapshots:
       '@mysten/kiosk': 0.12.26(typescript@5.8.3)
       '@mysten/sui': 2.5.0(typescript@5.8.3)
       '@tanstack/react-query': 5.90.21(react@18.3.1)
+      '@zofai/zo-sdk': 0.1.96(typescript@5.8.3)
       bignumber.js: 9.3.1
       bn.js: 5.2.3
       clsx: 2.1.1
@@ -2468,13 +2469,27 @@ snapshots:
       react-icons: 5.5.0(react@18.3.1)
       tailwind-merge: 2.6.1
       usehooks-ts: 3.1.1(react@18.3.1)
-      zo-sdk: 0.1.92(typescript@5.8.3)
     transitivePeerDependencies:
       - '@gql.tada/svelte-support'
       - '@gql.tada/vue-support'
       - axios
       - debug
       - typescript
+
+  '@zofai/zo-sdk@0.1.96(typescript@5.8.3)':
+    dependencies:
+      '@mysten/bcs': 1.9.2
+      '@mysten/kiosk': 0.12.26(typescript@5.8.3)
+      '@mysten/sui': 1.45.2(typescript@5.8.3)
+      '@pythnetwork/pyth-sui-js': 2.2.0(typescript@5.8.3)
+      decimal.js: 10.4.3
+    transitivePeerDependencies:
+      - '@gql.tada/svelte-support'
+      - '@gql.tada/vue-support'
+      - bufferutil
+      - debug
+      - typescript
+      - utf-8-validate
 
   acorn@8.16.0: {}
 
@@ -3045,20 +3060,5 @@ snapshots:
   yallist@3.1.1: {}
 
   yocto-queue@1.2.2: {}
-
-  zo-sdk@0.1.92(typescript@5.8.3):
-    dependencies:
-      '@mysten/bcs': 1.9.2
-      '@mysten/kiosk': 0.12.26(typescript@5.8.3)
-      '@mysten/sui': 1.45.2(typescript@5.8.3)
-      '@pythnetwork/pyth-sui-js': 2.2.0(typescript@5.8.3)
-      decimal.js: 10.4.3
-    transitivePeerDependencies:
-      - '@gql.tada/svelte-support'
-      - '@gql.tada/vue-support'
-      - bufferutil
-      - debug
-      - typescript
-      - utf-8-validate
 
   zod@3.25.76: {}

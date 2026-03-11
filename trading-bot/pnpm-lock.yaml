@@ -14,6 +14,9 @@ importers:
       '@types/node':
         specifier: ^22.14.1
         version: 22.14.1
+      '@zofai/zo-sdk':
+        specifier: ^0.1.96
+        version: 0.1.96(typescript@5.8.3)
       bignumber.js:
         specifier: ^9.3.0
         version: 9.3.0
@@ -29,9 +32,6 @@ importers:
       typescript:
         specifier: ^5.8.3
         version: 5.8.3
-      zo-sdk:
-        specifier: ^0.1.88
-        version: 0.1.88(typescript@5.8.3)
 
 packages:
 
@@ -173,6 +173,9 @@ packages:
 
   '@types/ws@8.18.1':
     resolution: {integrity: sha512-ThVF6DCVhA8kUGy+aazFQ4kXQ7E1Ty7A3ypFOe0IcJV8O/M511G99AW24irKrW56Wt44yG9+ij8FaqoBGkuBXg==}
+
+  '@zofai/zo-sdk@0.1.96':
+    resolution: {integrity: sha512-AVb+eu1VxcglNXcpX+rwmz2Znvn1pOn09idEI9wpx3wheMTriellWHrFX2uw04KwhRnJdChWWvkbWFKgfmVV6Q==}
 
   acorn-walk@8.3.4:
     resolution: {integrity: sha512-ueEepnujpqee2o5aIYnvHU6C0A42MNdsIDeqy5BydrkuC5R1ZuUFnm27EeFJGoEHJQgn3uleRvmTXaJgfXbt4g==}
@@ -388,9 +391,6 @@ packages:
     resolution: {integrity: sha512-Ux4ygGWsu2c7isFWe8Yu1YluJmqVhxqK2cLXNQA5AcC3QfbGNpM7fu0Y8b/z16pXLnFxZYvWhd3fhBY9DLmC6Q==}
     engines: {node: '>=6'}
 
-  zo-sdk@0.1.88:
-    resolution: {integrity: sha512-yw9+YhbnNGPDhM2ch6SAMZ4lZ18c6K9vWUcb+L5SV+TVROCJZX+gJJyJe87etO8khTjuqSoIHPP1bJXOezRDRw==}
-
 snapshots:
 
   '@0no-co/graphql.web@1.1.2(graphql@16.12.0)':
@@ -584,6 +584,21 @@ snapshots:
     dependencies:
       '@types/node': 22.14.1
 
+  '@zofai/zo-sdk@0.1.96(typescript@5.8.3)':
+    dependencies:
+      '@mysten/bcs': 1.9.2
+      '@mysten/kiosk': 0.12.26(typescript@5.8.3)
+      '@mysten/sui': 1.45.0(typescript@5.8.3)
+      '@pythnetwork/pyth-sui-js': 2.2.0(typescript@5.8.3)
+      decimal.js: 10.4.3
+    transitivePeerDependencies:
+      - '@gql.tada/svelte-support'
+      - '@gql.tada/vue-support'
+      - bufferutil
+      - debug
+      - typescript
+      - utf-8-validate
+
   acorn-walk@8.3.4:
     dependencies:
       acorn: 8.14.1
@@ -768,18 +783,3 @@ snapshots:
   ws@8.18.2: {}
 
   yn@3.1.1: {}
-
-  zo-sdk@0.1.88(typescript@5.8.3):
-    dependencies:
-      '@mysten/bcs': 1.9.2
-      '@mysten/kiosk': 0.12.26(typescript@5.8.3)
-      '@mysten/sui': 1.45.0(typescript@5.8.3)
-      '@pythnetwork/pyth-sui-js': 2.2.0(typescript@5.8.3)
-      decimal.js: 10.4.3
-    transitivePeerDependencies:
-      - '@gql.tada/svelte-support'
-      - '@gql.tada/vue-support'
-      - bufferutil
-      - debug
-      - typescript
-      - utf-8-validate

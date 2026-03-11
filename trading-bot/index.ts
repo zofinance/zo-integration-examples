@@ -1,6 +1,6 @@
 import dotenv from 'dotenv';
 import { TradeConfig, tradeWithMarketOrder, tradeWithTPSL } from './trade';
-import { LPToken } from 'zo-sdk';
+import { LPToken } from '@zofai/zo-sdk';
 dotenv.config();
 
 async function main() {

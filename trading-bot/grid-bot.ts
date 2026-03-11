@@ -23,9 +23,9 @@ import { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
 import { SuiClient } from '@mysten/sui/client';
 import BigNumber from 'bignumber.js';
 import { deployments } from './deployments';
-import { IBaseAPI, LPToken } from 'zo-sdk';
-import type { IBaseDataAPI } from 'zo-sdk';
-import type { IBasePositionInfo } from 'zo-sdk';
+import { IBaseAPI, LPToken } from '@zofai/zo-sdk';
+import type { IBaseDataAPI } from '@zofai/zo-sdk';
+import type { IBasePositionInfo } from '@zofai/zo-sdk';
 
 export interface GridBotConfig {
     indexToken: string;

@@ -1,6 +1,6 @@
 import { SuiClient } from '@mysten/sui/client';
 import { NETWORK } from './network';
-import { ZLPAPI, Network, IBaseAPI, LPToken, SDKFactory, IZLPDataAPI, ISLPDataAPI, IUSDZDataAPI } from 'zo-sdk';
+import { ZLPAPI, Network, IBaseAPI, LPToken, SDKFactory, IZLPDataAPI, ISLPDataAPI, IUSDZDataAPI } from '@zofai/zo-sdk';
 
 export function getConnection(): SuiClient {
     let rpcUrl: string;

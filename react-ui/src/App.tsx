@@ -21,11 +21,11 @@ export function App() {
         {/* Spacer */}
         <div className="flex-1" />
 
-        {/* RPC settings: choose predefined RPC or enter custom URL */}
-        <RpcSettings />
-
-        {/* Connect wallet */}
-        <CustomConnectButton />
+        {/* Widget components need the .zo-trading-widget wrapper for their bundled styles to apply */}
+        <div className="zo-trading-widget flex items-center gap-3">
+          <RpcSettings />
+          <CustomConnectButton />
+        </div>
       </header>
 
       {/* Trading widget fills remaining space */}

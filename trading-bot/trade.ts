@@ -20,7 +20,7 @@ import { SuiClient } from '@mysten/sui/client';
 import BigNumber from 'bignumber.js';
 import { deployments } from './deployments';
 import { Transaction } from '@mysten/sui/transactions';
-import { IBaseAPI, LPToken } from 'zo-sdk';
+import { IBaseAPI, LPToken } from '@zofai/zo-sdk';
 
 export interface TradeConfig {
     indexToken: string;
