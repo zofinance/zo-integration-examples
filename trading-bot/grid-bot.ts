@@ -5,12 +5,8 @@
 
 import {
     getConnection,
-    getZLPAPIInstance,
-    getZLPDataAPIInstance,
-    getSLPAPIInstance,
-    getSLPDataAPIInstance,
-    getUSDZAPIInstance,
-    getUSDZDataAPIInstance,
+    getAPIAndDataAPI,
+    type TradingAPI,
 } from './connection';
 import { getKeypair } from './keypair';
 import {
@@ -19,12 +15,9 @@ import {
     GetAllCoin,
 } from './utils';
 import { DEFAULT_SLIPPAGE } from './constants';
-import { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
-import { SuiClient } from '@mysten/sui/client';
 import BigNumber from 'bignumber.js';
-import { deployments } from './deployments';
-import { IBaseAPI, LPToken } from '@zofai/zo-sdk';
-import type { IBaseDataAPI } from '@zofai/zo-sdk';
+import { getDeployments } from './deployments';
+import { LPToken } from '@zofai/zo-sdk';
 import type { IBasePositionInfo } from '@zofai/zo-sdk';
 
 export interface GridBotConfig {
@@ -86,17 +79,12 @@ function getGridLevelIndex(price: number, gridPrices: number[]): number {
     return 0;
 }
 
-function getAPIAndDataAPI(pool: LPToken): { api: IBaseAPI; dataAPI: IBaseDataAPI } {
-    switch (pool) {
-        case LPToken.ZLP:
-            return { api: getZLPAPIInstance(), dataAPI: getZLPDataAPIInstance() };
-        case LPToken.SLP:
-            return { api: getSLPAPIInstance(), dataAPI: getSLPDataAPIInstance() };
-        case LPToken.USDZ:
-            return { api: getUSDZAPIInstance(), dataAPI: getUSDZDataAPIInstance() };
-        default:
-            return { api: getZLPAPIInstance(), dataAPI: getZLPDataAPIInstance() };
-    }
+async function fetchTradeOracleUpdate(
+    api: TradingAPI,
+    collateralToken: string,
+    indexToken: string,
+) {
+    return api.fetchPythProUpdateBytesForTokens([collateralToken, indexToken]);
 }
 
 let totalTradedVolumeUSD = 0;
@@ -106,6 +94,7 @@ export async function runGridBot(config: GridBotConfig): Promise<void> {
     const keypair = getKeypair();
     const userAddress = keypair.getPublicKey().toSuiAddress();
     const { api, dataAPI } = getAPIAndDataAPI(config.pool);
+    const deployments = getDeployments(config.pool);
     const coinType = deployments.coins[config.collateralToken].module;
     const gridPrices = buildGridPrices(
         config.gridLowerPrice,
@@ -146,7 +135,12 @@ export async function runGridBot(config: GridBotConfig): Promise<void> {
                 positionConfig.maxReservedMultiplier,
             );
         }
-        const tx = await api.openPositionV2!(
+        const pythProUpdateBytes = await fetchTradeOracleUpdate(
+            api,
+            config.collateralToken,
+            config.indexToken,
+        );
+        const tx = await api.openPositionV3(
             config.collateralToken,
             config.indexToken,
             config.orderSize,
@@ -156,6 +150,7 @@ export async function runGridBot(config: GridBotConfig): Promise<void> {
             reserveAmount,
             indexPrice,
             collateralPrice,
+            pythProUpdateBytes,
             false,
             false,
             DEFAULT_SLIPPAGE,
@@ -164,7 +159,6 @@ export async function runGridBot(config: GridBotConfig): Promise<void> {
             '',
             userAddress,
             false,
-            [],
         );
         tx.setSender(userAddress);
         tx.setGasBudget(1e9);
@@ -191,7 +185,12 @@ export async function runGridBot(config: GridBotConfig): Promise<void> {
         );
         const amount = BigInt(position.positionAmount);
         const coins = await GetAllCoin(client, userAddress, coinType);
-        const tx = await api.decreasePositionV2!(
+        const pythProUpdateBytes = await fetchTradeOracleUpdate(
+            api,
+            config.collateralToken,
+            config.indexToken,
+        );
+        const tx = await api.decreasePositionV3(
             position.id,
             config.collateralToken,
             config.indexToken,
@@ -199,6 +198,7 @@ export async function runGridBot(config: GridBotConfig): Promise<void> {
             true,
             indexPrice,
             collateralPrice,
+            pythProUpdateBytes,
             false,
             false,
             false,

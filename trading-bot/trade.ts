@@ -6,6 +6,8 @@ import {
     getSLPDataAPIInstance,
     getUSDZAPIInstance,
     getUSDZDataAPIInstance,
+    type TradingAPI,
+    type TradingDataAPI,
 } from './connection';
 import { getKeypair } from './keypair';
 import { getPositionCaps } from './position';
@@ -16,11 +18,11 @@ import {
 } from './utils';
 import { DEFAULT_SLIPPAGE } from './constants';
 import { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
-import { SuiClient } from '@mysten/sui/client';
+import { SuiClient } from '@zofai/zo-sdk';
 import BigNumber from 'bignumber.js';
-import { deployments } from './deployments';
+import { getDeployments } from './deployments';
 import { Transaction } from '@mysten/sui/transactions';
-import { IBaseAPI, LPToken } from '@zofai/zo-sdk';
+import { LPToken } from '@zofai/zo-sdk';
 
 export interface TradeConfig {
     indexToken: string;
@@ -40,8 +42,18 @@ export interface TradeConfig {
     maxVolumeUSD?: number; // Add max volume parameter with default
 }
 
-let apiInstance = getZLPAPIInstance();
-let dataAPIInstance = getZLPDataAPIInstance();
+let apiInstance: TradingAPI = getZLPAPIInstance();
+let dataAPIInstance: TradingDataAPI = getZLPDataAPIInstance();
+let deployments = getDeployments(LPToken.ZLP);
+
+/** Pyth Pro update bytes for collateral + index (required by *V3 trade methods). */
+async function fetchTradeOracleUpdate(
+    api: TradingAPI,
+    collateralToken: string,
+    indexToken: string,
+) {
+    return api.fetchPythProUpdateBytesForTokens([collateralToken, indexToken]);
+}
 
 // Add a global volume counter
 let totalTradedVolumeUSD = 0;
@@ -164,7 +176,7 @@ async function createPosition(
     client: SuiClient,
     keypair: Ed25519Keypair,
     userAddress: string,
-    apiInstance: IBaseAPI,
+    apiInstance: TradingAPI,
     dataAPIInstance: { getPositionConfig: (indexToken: string, long: boolean) => Promise<{ maxReservedMultiplier: number }> },
     overrideTradeSize?: bigint, // Optional override to ensure same size for opposite positions
 ) {
@@ -233,7 +245,13 @@ async function createPosition(
             );
         }
 
-        const tx = await apiInstance.openPositionV2!(
+        const pythProUpdateBytes = await fetchTradeOracleUpdate(
+            apiInstance,
+            config.collateralToken,
+            config.indexToken,
+        );
+
+        const tx = await apiInstance.openPositionV3(
             config.collateralToken,
             config.indexToken,
             tradeSize,
@@ -243,6 +261,7 @@ async function createPosition(
             reserveAmount,
             indexPrice,
             collateralPrice,
+            pythProUpdateBytes,
             false,
             false,
             DEFAULT_SLIPPAGE,
@@ -251,7 +270,6 @@ async function createPosition(
             '',
             userAddress,
             false,
-            [],
         );
 
         tx.setSender(userAddress);
@@ -331,7 +349,7 @@ async function closePosition(
     long: boolean,
     userAddress: string,
     config: TradeConfig,
-    apiInstance: IBaseAPI,
+    apiInstance: TradingAPI,
 ) {
     try {
         // get current price as reference
@@ -351,7 +369,13 @@ async function closePosition(
             collateralTokenType,
         );
 
-        const tx1 = await apiInstance.decreasePositionV2!(
+        const pythProUpdateBytes = await fetchTradeOracleUpdate(
+            apiInstance,
+            collateralToken,
+            indexToken,
+        );
+
+        const tx1 = await apiInstance.decreasePositionV3(
             positionId,
             collateralToken,
             indexToken,
@@ -359,6 +383,7 @@ async function closePosition(
             long,
             indexPrice,
             collateralPrice,
+            pythProUpdateBytes,
             false,
             false,
             false,
@@ -508,7 +533,13 @@ async function createPositionWithTPSLOrders(
             );
         }
 
-        const tx = await apiInstance.openPositionV2!(
+        const pythProUpdateBytes = await fetchTradeOracleUpdate(
+            apiInstance,
+            config.collateralToken,
+            config.indexToken,
+        );
+
+        const tx = await apiInstance.openPositionV3(
             config.collateralToken,
             config.indexToken,
             tradeSize,
@@ -518,6 +549,7 @@ async function createPositionWithTPSLOrders(
             reserveAmount,
             indexPrice,
             collateralPrice,
+            pythProUpdateBytes,
             false,
             false,
             DEFAULT_SLIPPAGE,
@@ -644,21 +676,25 @@ export async function tradeWithTPSL(config: TradeConfig) {
             case LPToken.ZLP: {
                 apiInstance = getZLPAPIInstance();
                 dataAPIInstance = getZLPDataAPIInstance();
+                deployments = getDeployments(LPToken.ZLP);
                 break;
             }
             case LPToken.SLP: {
                 apiInstance = getSLPAPIInstance();
                 dataAPIInstance = getSLPDataAPIInstance();
+                deployments = getDeployments(LPToken.SLP);
                 break;
             }
             case LPToken.USDZ: {
                 apiInstance = getUSDZAPIInstance();
                 dataAPIInstance = getUSDZDataAPIInstance();
+                deployments = getDeployments(LPToken.USDZ);
                 break;
             }
             default: {
                 apiInstance = getZLPAPIInstance();
                 dataAPIInstance = getZLPDataAPIInstance();
+                deployments = getDeployments(LPToken.ZLP);
             }
         }
 
@@ -1156,7 +1192,13 @@ async function createTPSLOrders(
                 collateralTokenType,
             );
 
-            const tx1 = await apiInstance.decreasePositionV2!(
+            const pythProUpdateBytes = await fetchTradeOracleUpdate(
+                apiInstance,
+                collateralToken,
+                indexToken,
+            );
+
+            const tx1 = await apiInstance.decreasePositionV3(
                 positionId,
                 collateralToken,
                 indexToken,
@@ -1164,6 +1206,7 @@ async function createTPSLOrders(
                 long,
                 takeProfitPrice,
                 collateralPrice,
+                pythProUpdateBytes,
                 true,
                 true,
                 false,
@@ -1214,7 +1257,13 @@ async function createTPSLOrders(
                 userAddress,
                 collateralTokenType,
             );
-            const tx2 = await apiInstance.decreasePositionV2!(
+            const pythProUpdateBytes = await fetchTradeOracleUpdate(
+                apiInstance,
+                collateralToken,
+                indexToken,
+            );
+
+            const tx2 = await apiInstance.decreasePositionV3(
                 positionId,
                 collateralToken,
                 indexToken,
@@ -1222,6 +1271,7 @@ async function createTPSLOrders(
                 long,
                 stopLossPrice,
                 collateralPrice,
+                pythProUpdateBytes,
                 true,
                 false,
                 false,
@@ -1269,7 +1319,7 @@ async function createPositionsIfNeeded(
     client: SuiClient,
     keypair: Ed25519Keypair,
     userAddress: string,
-    apiInstance: IBaseAPI,
+    apiInstance: TradingAPI,
     indexPrice: number,
     collateralPrice: number,
     coinType: string,
@@ -1413,21 +1463,25 @@ export async function tradeWithMarketOrder(config: TradeConfig) {
             case LPToken.ZLP: {
                 apiInstance = getZLPAPIInstance();
                 dataAPIInstance = getZLPDataAPIInstance();
+                deployments = getDeployments(LPToken.ZLP);
                 break;
             }
             case LPToken.SLP: {
                 apiInstance = getSLPAPIInstance();
                 dataAPIInstance = getSLPDataAPIInstance();
+                deployments = getDeployments(LPToken.SLP);
                 break;
             }
             case LPToken.USDZ: {
                 apiInstance = getUSDZAPIInstance();
                 dataAPIInstance = getUSDZDataAPIInstance();
+                deployments = getDeployments(LPToken.USDZ);
                 break;
             }
             default: {
                 apiInstance = getZLPAPIInstance();
                 dataAPIInstance = getZLPDataAPIInstance();
+                deployments = getDeployments(LPToken.ZLP);
             }
         }
 

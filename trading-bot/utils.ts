@@ -1,8 +1,8 @@
 import {
     GetCoinsParams,
     GetOwnedObjectsParams,
-    SuiClient,
-} from '@mysten/sui/client';
+} from '@mysten/sui/jsonRpc';
+import type { SuiClient } from '@zofai/zo-sdk';
 import { Transaction } from '@mysten/sui/transactions';
 import { DEFAULT_RELAYER_FEE } from './constants';
 

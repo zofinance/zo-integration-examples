@@ -1,4 +1,9 @@
+import { getConsts, LPToken } from '@zofai/zo-sdk';
 import { NETWORK } from './network';
-import { getConsts } from '@zofai/zo-sdk';
 
-export const deployments = getConsts(NETWORK.valueOf());
+/** Default consts (ZLP). Prefer `getDeployments(pool)` when trading a specific pool. */
+export const deployments = getConsts(NETWORK, LPToken.ZLP);
+
+export function getDeployments(pool: LPToken = LPToken.ZLP) {
+    return getConsts(NETWORK, pool);
+}

@@ -65,8 +65,8 @@ Before running, edit the config in the corresponding file (see below).
 
 1. **Connection** (`connection.ts`)
    - Builds a `SuiClient` from `SUI_MAINNET_RPC_URL` or `SUI_TESTNET_RPC_URL` and `NETWORK`.
-   - Uses **zo-sdk** `SDKFactory` to create API and DataAPI instances for ZLP, SLP, and USDZ pools.
-   - ZO API endpoint: `https://api.zofinance.io`. Pyth price connection: `https://hermes.pyth.network`.
+   - Uses **@zofai/zo-sdk** `SDK.getInstance()` to create typed API/DataAPI instances for ZLP, SLP, and USDZ.
+   - ZO API: `https://api.zofinance.io`. Hermes / Pyth Pro: `https://hermes.zofinance.io`.
 
 2. **Keypair** (`keypair.ts`)
    - Loads `PRIVATE_KEY` from env and creates an `Ed25519Keypair` via `decodeSuiPrivateKey` + `Ed25519Keypair.fromSecretKey`.
@@ -74,6 +74,11 @@ Before running, edit the config in the corresponding file (see below).
 
 3. **Trade config**
    - You choose pool (`LPToken.ZLP`, `LPToken.SLP`, or `LPToken.USDZ`), index token (e.g. `btc`), collateral (e.g. `nusdc`), sizes, and (for TPSL) take-profit/stop-loss percentages.
+
+4. **Trading methods (Pyth Pro / V3)**
+   - Opens use `openPositionV3`; closes and TP/SL use `decreasePositionV3`.
+   - Before each trade, call `api.fetchPythProUpdateBytesForTokens([collateral, index])` and pass the bytes into the V3 method.
+   - Legacy `openPositionV2` / `decreasePositionV2` still exist in the SDK but are not recommended for new integrations.
 
 ### Config for market / TPSL bot
 
@@ -116,12 +121,12 @@ pnpm run grid
 | `position.ts` | Position helpers. |
 | `utils.ts` | Relayer fee, reserve amount, coin helpers. |
 | `constants.ts` | Slippage, relayer fee, trade-level constants. |
-| `deployments.ts` | Uses `zo-sdk` `getConsts(NETWORK)` for contract addresses. |
+| `deployments.ts` | `getConsts(NETWORK, pool)` for pool-specific contract addresses. |
 
 ### Dependencies
 
-- **zo-sdk** – ZO protocol API and types (pools, positions, orders).
-- **@mysten/sui** – Sui client, keypair, transactions.
+- **@zofai/zo-sdk** (`^0.2.30`) – ZO protocol API and types (pools, positions, orders; Pyth Pro V3 trading).
+- **@mysten/sui** (`^2.4.0`) – Sui client, keypair, transactions (required by zo-sdk 0.2.x).
 - **dotenv** – Loads `.env` into `process.env`.
 - **bignumber.js** – Numeric handling for sizes and fees.
 

@@ -1,7 +1,7 @@
 import { getKeypair } from './keypair';
 import { deployments } from './deployments';
 import { GetOwnedObjects, SplitCoins } from './utils';
-import { SuiClient } from '@mysten/sui/client';
+import type { SuiClient } from '@zofai/zo-sdk';
 
 export interface PositionKey {
     vaultKey: string;

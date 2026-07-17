@@ -1,13 +1,9 @@
 import * as dotenv from 'dotenv';
+import { Network } from '@zofai/zo-sdk';
 
 dotenv.config();
 
-export enum Network {
-    MAINNET = 'mainnet',
-    TESTNET = 'testnet',
-    DEVNET = 'devnet',
-    LOCALNET = 'localnet',
-}
+export { Network };
 
 export const NETWORK: Network =
     (process.env.NETWORK as Network) || Network.MAINNET;

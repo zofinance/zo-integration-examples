@@ -21,11 +21,11 @@ importers:
         specifier: ^66.0.0
         version: 66.6.2
       '@zofai/trading-widget':
-        specifier: ^0.1.2
-        version: 0.1.2(@mysten/dapp-kit-react@1.1.0(@mysten/sui@2.5.0(typescript@5.8.3))(@types/react@18.3.28)(react@18.3.1)(typescript@5.8.3))(@mysten/sui@2.5.0(typescript@5.8.3))(@tanstack/react-query@5.90.21(react@18.3.1))(@zofai/zo-sdk@0.1.96(typescript@5.8.3))(axios@1.13.6)(jotai@2.18.0(@babel/core@7.29.0)(@babel/template@7.28.6)(@types/react@18.3.28)(react@18.3.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(typescript@5.8.3)
+        specifier: ^0.1.3
+        version: 0.1.3(@mysten/dapp-kit-react@1.1.0(@mysten/sui@2.5.0(typescript@5.8.3))(@types/react@18.3.28)(react@18.3.1)(typescript@5.8.3))(@mysten/sui@2.5.0(typescript@5.8.3))(@tanstack/react-query@5.90.21(react@18.3.1))(@zofai/zo-sdk@0.2.30(typescript@5.8.3))(axios@1.13.6)(jotai@2.18.0(@babel/core@7.29.0)(@babel/template@7.28.6)(@types/react@18.3.28)(react@18.3.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(typescript@5.8.3)
       '@zofai/zo-sdk':
-        specifier: ^0.1.96
-        version: 0.1.96(typescript@5.8.3)
+        specifier: ^0.2.30
+        version: 0.2.30(typescript@5.8.3)
       jotai:
         specifier: ^2.10.0
         version: 2.18.0(@babel/core@7.29.0)(@babel/template@7.28.6)(@types/react@18.3.28)(react@18.3.1)
@@ -419,6 +419,9 @@ packages:
   '@mysten/bcs@2.0.2':
     resolution: {integrity: sha512-c/nVRPJEV1fRZdKXhysVsy/yCPdiFt7jn6A4/7W2LH1ZPSVPzRkxtLY362D0zaLuBnyT5Y9d9nFLm3ixI8Goug==}
 
+  '@mysten/bcs@2.1.0':
+    resolution: {integrity: sha512-rIR/cDAqDfBDxmYEZXppN/on8gmh1OW0dYi/Bk2kMBZcYMTaBaEtEX1VR6g7HicVxuMbFAIP0/SQkdH7J9Y5dQ==}
+
   '@mysten/dapp-kit-core@1.1.1':
     resolution: {integrity: sha512-AOPvEXLXEEr5ouMp8ATC1CexGbei4rpDDc+IiTiipp1EgygElpsIsQ8sTPqSfgHI9lR7iP6w9IAVThBaz3KozQ==}
     peerDependencies:
@@ -439,6 +442,12 @@ packages:
   '@mysten/kiosk@0.12.26':
     resolution: {integrity: sha512-CvkBOIUfYWc0CL9LMyjLOrtFRQqazR5IHAmnEUjUHP0iTneFoGHVs+9U0FGVvhM9u1RmmjM32NzXA4+PiG1FDw==}
     engines: {node: '>=18'}
+
+  '@mysten/kiosk@1.3.8':
+    resolution: {integrity: sha512-75J31QurV/g47mcrMIwRO6/mb8ixnyZpJYZ3GISZuZ1Tzi/ALE2dnkKq44abWQvRDnW/gJkacnsFWwBNbUPocA==}
+    engines: {node: '>=18'}
+    peerDependencies:
+      '@mysten/sui': ^2.22.0
 
   '@mysten/slush-wallet@1.0.2':
     resolution: {integrity: sha512-gcAQaG4rExDqvw+4dTRNlM8U+st8Ngp5cpdFO54DuYqhNqzk5Pc4DAa9lh4zZiUMq/ZtGki2+SpvYrVvT2Vy7Q==}
@@ -465,6 +474,9 @@ packages:
 
   '@mysten/utils@0.3.1':
     resolution: {integrity: sha512-36KhxG284uhDdSnlkyNaS6fzKTX9FpP2WQWOwUKIRsqQFFIm2ooCf2TP1IuqrtMpkairwpiWkAS0eg7cpemVzg==}
+
+  '@mysten/utils@0.4.0':
+    resolution: {integrity: sha512-nHlXECBl9kE+AHF/aw5a7JVNizae8Kb71A4H18BV/sXd5/l2BaWNGWVatq05fzJo3hF78AWorDxa++1TgcBKWw==}
 
   '@mysten/wallet-standard@0.20.1':
     resolution: {integrity: sha512-Q2GoXO1SPLayqunNIWI3VT8cyOVGTFAPUvaCzx7jYIEoZBfyCR5RCUS4/ehgAlApF88Y/1c/OfjBvEoeRi76jw==}
@@ -675,6 +687,9 @@ packages:
   '@scure/base@2.0.0':
     resolution: {integrity: sha512-3E1kpuZginKkek01ovG8krQ0Z44E3DHPjc5S2rjJw9lZn3KSQOs8S7wqikF/AH7iRanHypj85uGyxk0XAyC37w==}
 
+  '@scure/base@2.2.0':
+    resolution: {integrity: sha512-b8XEupJibegiXV+tDUseI8oLQc8ei3d/4Jkb2RpbHh3MfE054ov3uIz2dhFkB3FI8iwYkEh0gGCApkrYggkPNg==}
+
   '@scure/bip32@1.7.0':
     resolution: {integrity: sha512-E4FFX/N3f4B80AKWp5dP6ow+flD1LQZo/w8UnLGYZO674jS6YnYeepycOOksv+vLPSpgN35wgKgy+ybfTb2SMw==}
 
@@ -862,19 +877,19 @@ packages:
       axios: ^0.x || ^1.0.0
       zod: ^3.x
 
-  '@zofai/trading-widget@0.1.2':
-    resolution: {integrity: sha512-gaztqCGmxNuszrzZ1/A0+9aqy2+acBw1hoSVRp1hmnSCdda99Ycylcv6CDfvXcQ8eq3V13obDArpCodyTFuCHQ==}
+  '@zofai/trading-widget@0.1.3':
+    resolution: {integrity: sha512-+8ZgFFdFL7Or7wZGIod0jIQlIqBl/MQJ5JzfYM1kbSqUJEsKJveIzGOsTbSDlPRgKFdzwt2+N6PLEAKWJ8GptQ==}
     peerDependencies:
       '@mysten/dapp-kit-react': '>=1.0.0'
       '@mysten/sui': '>=2.0.0'
       '@tanstack/react-query': '>=5.0.0'
-      '@zofai/zo-sdk': ^0.1.95
+      '@zofai/zo-sdk': ^0.2.30
       jotai: '>=2.0.0'
       react: '>=18.0.0'
       react-dom: '>=18.0.0'
 
-  '@zofai/zo-sdk@0.1.96':
-    resolution: {integrity: sha512-AVb+eu1VxcglNXcpX+rwmz2Znvn1pOn09idEI9wpx3wheMTriellWHrFX2uw04KwhRnJdChWWvkbWFKgfmVV6Q==}
+  '@zofai/zo-sdk@0.2.30':
+    resolution: {integrity: sha512-88gDN+ebpuRDXim5yWIeirdw8/0DHPzn1ZLZg9hw/+tA3QjUL+TkLYs/OuIVbD2BLFlDKHX4mDtC+IIfWLbb/g==}
 
   acorn@8.16.0:
     resolution: {integrity: sha512-UVJyE9MttOsBQIDKw1skb9nAwQuR5wuGD3+82K6JgJlm/Y+KI92oNsMNGZCYdDsVtRHSak0pcV5Dno5+4jh9sw==}
@@ -1843,6 +1858,11 @@ snapshots:
       '@mysten/utils': 0.3.1
       '@scure/base': 2.0.0
 
+  '@mysten/bcs@2.1.0':
+    dependencies:
+      '@mysten/utils': 0.4.0
+      '@scure/base': 2.2.0
+
   '@mysten/dapp-kit-core@1.1.1(@mysten/sui@2.5.0(typescript@5.8.3))(typescript@5.8.3)':
     dependencies:
       '@floating-ui/dom': 1.7.5
@@ -1891,6 +1911,12 @@ snapshots:
       - '@gql.tada/svelte-support'
       - '@gql.tada/vue-support'
       - typescript
+
+  '@mysten/kiosk@1.3.8(@mysten/sui@2.5.0(typescript@5.8.3))':
+    dependencies:
+      '@mysten/bcs': 2.1.0
+      '@mysten/sui': 2.5.0(typescript@5.8.3)
+      '@mysten/utils': 0.4.0
 
   '@mysten/slush-wallet@1.0.2(@mysten/sui@2.5.0(typescript@5.8.3))(typescript@5.8.3)':
     dependencies:
@@ -1976,6 +2002,10 @@ snapshots:
   '@mysten/utils@0.3.1':
     dependencies:
       '@scure/base': 2.0.0
+
+  '@mysten/utils@0.4.0':
+    dependencies:
+      '@scure/base': 2.2.0
 
   '@mysten/wallet-standard@0.20.1(@mysten/sui@2.5.0(typescript@5.8.3))':
     dependencies:
@@ -2163,6 +2193,8 @@ snapshots:
   '@scure/base@1.2.6': {}
 
   '@scure/base@2.0.0': {}
+
+  '@scure/base@2.2.0': {}
 
   '@scure/bip32@1.7.0':
     dependencies:
@@ -2445,7 +2477,7 @@ snapshots:
       axios: 1.13.6
       zod: 3.25.76
 
-  '@zofai/trading-widget@0.1.2(@mysten/dapp-kit-react@1.1.0(@mysten/sui@2.5.0(typescript@5.8.3))(@types/react@18.3.28)(react@18.3.1)(typescript@5.8.3))(@mysten/sui@2.5.0(typescript@5.8.3))(@tanstack/react-query@5.90.21(react@18.3.1))(@zofai/zo-sdk@0.1.96(typescript@5.8.3))(axios@1.13.6)(jotai@2.18.0(@babel/core@7.29.0)(@babel/template@7.28.6)(@types/react@18.3.28)(react@18.3.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(typescript@5.8.3)':
+  '@zofai/trading-widget@0.1.3(@mysten/dapp-kit-react@1.1.0(@mysten/sui@2.5.0(typescript@5.8.3))(@types/react@18.3.28)(react@18.3.1)(typescript@5.8.3))(@mysten/sui@2.5.0(typescript@5.8.3))(@tanstack/react-query@5.90.21(react@18.3.1))(@zofai/zo-sdk@0.2.30(typescript@5.8.3))(axios@1.13.6)(jotai@2.18.0(@babel/core@7.29.0)(@babel/template@7.28.6)(@types/react@18.3.28)(react@18.3.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(typescript@5.8.3)':
     dependencies:
       '@cetusprotocol/aggregator-sdk': 1.4.5(axios@1.13.6)(typescript@5.8.3)
       '@mysten/dapp-kit-react': 1.1.0(@mysten/sui@2.5.0(typescript@5.8.3))(@types/react@18.3.28)(react@18.3.1)(typescript@5.8.3)
@@ -2453,7 +2485,7 @@ snapshots:
       '@mysten/kiosk': 0.12.26(typescript@5.8.3)
       '@mysten/sui': 2.5.0(typescript@5.8.3)
       '@tanstack/react-query': 5.90.21(react@18.3.1)
-      '@zofai/zo-sdk': 0.1.96(typescript@5.8.3)
+      '@zofai/zo-sdk': 0.2.30(typescript@5.8.3)
       bignumber.js: 9.3.1
       bn.js: 5.2.3
       clsx: 2.1.1
@@ -2476,11 +2508,11 @@ snapshots:
       - debug
       - typescript
 
-  '@zofai/zo-sdk@0.1.96(typescript@5.8.3)':
+  '@zofai/zo-sdk@0.2.30(typescript@5.8.3)':
     dependencies:
-      '@mysten/bcs': 1.9.2
-      '@mysten/kiosk': 0.12.26(typescript@5.8.3)
-      '@mysten/sui': 1.45.2(typescript@5.8.3)
+      '@mysten/bcs': 2.1.0
+      '@mysten/kiosk': 1.3.8(@mysten/sui@2.5.0(typescript@5.8.3))
+      '@mysten/sui': 2.5.0(typescript@5.8.3)
       '@pythnetwork/pyth-sui-js': 2.2.0(typescript@5.8.3)
       decimal.js: 10.4.3
     transitivePeerDependencies:

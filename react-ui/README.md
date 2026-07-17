@@ -5,8 +5,9 @@ A React example app that integrates the [ZO Finance](https://zofai.io) trading w
 ## Stack
 
 - **React 18** + **TypeScript** + **Vite**
-- **@zofai/trading-widget** – ZO trading UI and components
+- **@zofai/trading-widget** (`^0.1.3`) – ZO trading UI and components
 - **@mysten/dapp-kit-react** + **@mysten/sui** – Sui wallet connection (mainnet)
+- **@zofai/zo-sdk** (`^0.2.30`) – peer for the trading widget (Pyth Pro / V3 APIs)
 - **UnoCSS** – styling (Tailwind-style utilities + shadcn preset)
 - **Jotai** – state (via widget `appStore`)
 - **TanStack Query** – data fetching
