@@ -1,7 +1,7 @@
 import { getKeypair } from './keypair';
 import { deployments } from './deployments';
 import { GetOwnedObjects, SplitCoins } from './utils';
-import type { SuiClient } from '@zofai/zo-sdk';
+import type { ZoSuiClient } from './connection';
 
 export interface PositionKey {
     vaultKey: string;
@@ -66,7 +66,7 @@ export function isPositionCap(typeStr: string): boolean {
     return typeStr.includes('::market::PositionCap<');
 }
 
-export async function getPositionCaps(client: SuiClient, sender: string = '') {
+export async function getPositionCaps(client: ZoSuiClient, sender: string = '') {
     try {
         // Get keypair if sender is not provided
         if (!sender) {
@@ -111,7 +111,7 @@ export async function getPositionCaps(client: SuiClient, sender: string = '') {
  * @returns position details
  */
 export async function getPositionDetails(
-    client: SuiClient,
+    client: ZoSuiClient,
     positionId: string,
 ) {
     try {
@@ -120,8 +120,6 @@ export async function getPositionDetails(
             options: {
                 showContent: true,
                 showType: true,
-                showOwner: true,
-                showDisplay: true,
             },
         });
 

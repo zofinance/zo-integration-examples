@@ -1,28 +1,28 @@
 import {
     getZLPAPIInstance,
-    getConnection,
     getZLPDataAPIInstance,
-    getSLPAPIInstance,
-    getSLPDataAPIInstance,
-    getUSDZAPIInstance,
-    getUSDZDataAPIInstance,
+    getConnection,
+    getAPIAndDataAPI,
+    simulateOrThrow,
+    signAndExecuteTx,
     type TradingAPI,
     type TradingDataAPI,
+    type ZoSuiClient,
 } from './connection';
 import { getKeypair } from './keypair';
-import { getPositionCaps } from './position';
 import {
     calculateRelayerFeeInToken,
     calculateReserveAmount,
     GetAllCoin,
 } from './utils';
 import { DEFAULT_SLIPPAGE } from './constants';
+import { fetchTokenUsdPrice } from './prices';
 import { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
-import { SuiClient } from '@zofai/zo-sdk';
 import BigNumber from 'bignumber.js';
 import { getDeployments } from './deployments';
 import { Transaction } from '@mysten/sui/transactions';
 import { LPToken } from '@zofai/zo-sdk';
+import { fetchTraderPositionsFromApi } from './indexer';
 
 export interface TradeConfig {
     indexToken: string;
@@ -55,38 +55,75 @@ async function fetchTradeOracleUpdate(
     return api.fetchPythProUpdateBytesForTokens([collateralToken, indexToken]);
 }
 
+async function fetchPrice(token: string): Promise<number> {
+    return fetchTokenUsdPrice(apiInstance, token);
+}
+
+/** Indexed OPEN positions from ZO API `/trader-positions` (no RPC hydrate). */
+async function loadOpenPositions(owner: string, config: TradeConfig) {
+    return fetchTraderPositionsFromApi(
+        owner,
+        config.pool,
+        deployments,
+        {
+            status: 'OPEN',
+            indexToken: config.indexToken,
+            collateralToken: config.collateralToken,
+        },
+    );
+}
+
+/** Indexed live orders (zo API `/open-orders`). */
+async function loadOpenOrders(owner: string, config: TradeConfig) {
+    return dataAPIInstance.getTraderOpenOrderInfoList(owner, {
+        indexToken: config.indexToken,
+        collateralToken: config.collateralToken,
+    });
+}
+
+async function waitForOpenPosition(
+    owner: string,
+    config: TradeConfig,
+    direction: boolean,
+) {
+    for (let i = 0; i < 8; i++) {
+        const positions = await loadOpenPositions(owner, config);
+        const found = positions.find((p) => p.long === direction);
+        if (found) {
+            return found;
+        }
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+    }
+    return undefined;
+}
+
+function bindPoolApis(pool: LPToken) {
+    const { api, dataAPI } = getAPIAndDataAPI(pool);
+    apiInstance = api;
+    dataAPIInstance = dataAPI;
+    deployments = getDeployments(pool);
+}
+
+/** Closed positions + executed orders from ZO API (`/trader-positions`, `/open-orders`). */
+async function loadCleanupState(owner: string) {
+    const closedPositions = await fetchTraderPositionsFromApi(
+        owner,
+        apiInstance.lpToken,
+        deployments,
+        { status: 'CLOSED' },
+    );
+    const orders = await dataAPIInstance.getTraderOpenOrderInfoList(owner, {
+        includeFailed: true,
+    });
+    return {
+        closedPositions,
+        executedOrders: orders.filter((order) => order.executed),
+    };
+}
+
 // Add a global volume counter
 let totalTradedVolumeUSD = 0;
 const DEFAULT_MAX_VOLUME_USD = 4000000; // 4 million USD
-
-async function fetchPrice(token: string): Promise<number> {
-    const parsedToken = token === 'nusdc' ? 'usdc' : token;
-    const url = `https://api.binance.com/api/v3/ticker/price?symbol=${parsedToken.toUpperCase()}USDT`;
-    try {
-        const response = await fetch(url);
-        if (!response.ok) {
-            throw new Error(
-                `Failed to fetch price for ${token}: HTTP ${response.status}`,
-            );
-        }
-        const data = await response.json();
-        if (!data || !data.price) {
-            throw new Error(
-                `Invalid response from Binance API for ${token}: missing price field`,
-            );
-        }
-        const price = parseFloat(data.price);
-        if (!Number.isFinite(price) || price <= 0) {
-            throw new Error(
-                `Invalid price value for ${token}: ${data.price}`,
-            );
-        }
-        return price;
-    } catch (error) {
-        console.error(`Error fetching price for ${token}:`, error);
-        throw error;
-    }
-}
 
 // Calculate take profit and stop loss prices based on current price and percentages
 function calculateTPSLPrices(
@@ -173,7 +210,7 @@ async function createPosition(
     indexPrice: number,
     collateralPrice: number,
     collateralTokenType: string,
-    client: SuiClient,
+    client: ZoSuiClient,
     keypair: Ed25519Keypair,
     userAddress: string,
     apiInstance: TradingAPI,
@@ -275,23 +312,8 @@ async function createPosition(
         tx.setSender(userAddress);
         tx.setGasBudget(1e9);
 
-        const dryRunResult = await client.dryRunTransactionBlock({
-            transactionBlock: await tx.build({
-                client,
-            }),
-        });
-        if (dryRunResult.effects.status.status === 'failure') {
-            console.error(
-                'Failed to dry run transaction: ',
-                dryRunResult.effects.status.error,
-            );
-            throw new Error(dryRunResult.effects.status.error);
-        }
-
-        const res = await client.signAndExecuteTransaction({
-            transaction: tx,
-            signer: keypair,
-        });
+        await simulateOrThrow(client, tx, 'open position');
+        const res = await signAndExecuteTx(client, tx, keypair);
 
         if (res) {
             console.log(
@@ -309,22 +331,13 @@ async function createPosition(
                 process.exit(0);
             }
 
-            await new Promise((resolve) => setTimeout(resolve, 5000));
-            const updatedPositions = await getPositionCaps(client, userAddress);
-
-            if (updatedPositions.length > 0) {
-                // Find the position we just created
-                const symbolToMatch = `${direction ? 'LONG' : 'SHORT'}`;
-                const newPosition = updatedPositions.find(
-                    (pos) =>
-                        pos.key &&
-                        pos.key.symbolKey.direction.includes(symbolToMatch) &&
-                        pos.key.symbolKey.index.includes(config.indexToken),
-                );
-
-                if (newPosition) {
-                    return true;
-                }
+            const newPosition = await waitForOpenPosition(
+                userAddress,
+                config,
+                direction,
+            );
+            if (newPosition) {
+                return true;
             }
         }
         return false;
@@ -339,7 +352,7 @@ async function createPosition(
 
 // close position by position id
 async function closePosition(
-    client: SuiClient,
+    client: ZoSuiClient,
     signer: Ed25519Keypair,
     positionId: string,
     collateralToken: string,
@@ -396,40 +409,8 @@ async function closePosition(
         tx1.setSender(userAddress);
         tx1.setGasBudget(1e9);
 
-        const dryRunResult = await client.dryRunTransactionBlock({
-            transactionBlock: await tx1.build({
-                client,
-            }),
-        });
-        if (dryRunResult.effects.status.status === 'failure') {
-            console.error(
-                'Failed to dry run transaction: ',
-                dryRunResult.effects.status.error,
-            );
-            const transaction = dryRunResult.input.transaction;
-            if (
-                transaction &&
-                'kind' in transaction &&
-                transaction.kind === 'ProgrammableTransaction'
-            ) {
-                // console.error('\n=== ALL TRANSACTIONS ===');
-                // console.error(JSON.stringify(transaction.transactions, null, 2));
-                console.error('\n=== INPUT 1 ===');
-                console.error(JSON.stringify(transaction.inputs?.[1], null, 2));
-                console.error('\n=== COMMAND 6 (where error occurred) ===');
-                if (transaction.transactions[6]) {
-                    console.error(
-                        JSON.stringify(transaction.transactions[6], null, 2),
-                    );
-                }
-            }
-            throw new Error(dryRunResult.effects.status.error);
-        }
-
-        const res1 = await client.signAndExecuteTransaction({
-            transaction: tx1,
-            signer,
-        });
+        await simulateOrThrow(client, tx1, 'close position');
+        const res1 = await signAndExecuteTx(client, tx1, signer);
 
         if (res1) {
             console.log(
@@ -456,13 +437,127 @@ async function closePosition(
     }
 }
 
+/**
+ * Add collateral to an open position.
+ * Move `pledge_in_position` does not take an oracle update.
+ */
+export async function pledgeInOpenPosition(
+    config: TradeConfig,
+    positionId: string,
+    amount: bigint,
+): Promise<boolean> {
+    bindPoolApis(config.pool);
+    const client = getConnection();
+    const keypair = getKeypair();
+    const userAddress = keypair.getPublicKey().toSuiAddress();
+    const coinType = deployments.coins[config.collateralToken].module;
+    const coins = await GetAllCoin(client, userAddress, coinType);
+
+    const tx = await apiInstance.pledgeInPosition(
+        positionId,
+        config.collateralToken,
+        config.indexToken,
+        Number(amount),
+        coins.map((c) => c.coinObjectId),
+        config.long,
+        false,
+        userAddress,
+    );
+    tx.setSender(userAddress);
+    tx.setGasBudget(1e9);
+    await simulateOrThrow(client, tx, 'pledge in position');
+    const res = await signAndExecuteTx(client, tx, keypair);
+    console.log(`pledged ${amount} into ${positionId}, tx ${res?.digest}`);
+    return Boolean(res?.digest);
+}
+
+/**
+ * Withdraw collateral from an open position.
+ * SLP: `redeemFromPositionV3`. ZLP / USDZ: `redeemFromPositionV2` (Pyth Pro).
+ */
+export async function redeemFromOpenPosition(
+    config: TradeConfig,
+    positionId: string,
+    amount: bigint,
+): Promise<boolean> {
+    bindPoolApis(config.pool);
+    const client = getConnection();
+    const keypair = getKeypair();
+    const userAddress = keypair.getPublicKey().toSuiAddress();
+    const pythProUpdateBytes = await fetchTradeOracleUpdate(
+        apiInstance,
+        config.collateralToken,
+        config.indexToken,
+    );
+
+    const tx = await buildRedeemTx(
+        apiInstance,
+        positionId,
+        config.collateralToken,
+        config.indexToken,
+        Number(amount),
+        config.long,
+        pythProUpdateBytes,
+    );
+    tx.setSender(userAddress);
+    tx.setGasBudget(1e9);
+    await simulateOrThrow(client, tx, 'redeem from position');
+    const res = await signAndExecuteTx(client, tx, keypair);
+    console.log(`redeemed ${amount} from ${positionId}, tx ${res?.digest}`);
+    return Boolean(res?.digest);
+}
+
+async function buildRedeemTx(
+    api: TradingAPI,
+    pcpId: string,
+    collateralToken: string,
+    indexToken: string,
+    amount: number,
+    long: boolean,
+    pythProUpdateBytes: Uint8Array | number[],
+) {
+    if (
+        'redeemFromPositionV3' in api &&
+        typeof api.redeemFromPositionV3 === 'function'
+    ) {
+        return api.redeemFromPositionV3(
+            pcpId,
+            collateralToken,
+            indexToken,
+            amount,
+            long,
+            pythProUpdateBytes,
+        );
+    }
+    if (
+        'redeemFromPositionV2' in api &&
+        typeof api.redeemFromPositionV2 === 'function'
+    ) {
+        return api.redeemFromPositionV2(
+            pcpId,
+            collateralToken,
+            indexToken,
+            amount,
+            long,
+            pythProUpdateBytes,
+        );
+    }
+    return api.redeemFromPosition(
+        pcpId,
+        collateralToken,
+        indexToken,
+        amount,
+        long,
+    );
+}
+
 async function createPositionWithTPSLOrders(
     config: TradeConfig,
     direction: boolean, // true for long, false for short
     indexPrice: number,
     collateralPrice: number,
     collateralTokenType: string,
-    client: SuiClient,
+    client: ZoSuiClient,
     keypair: Ed25519Keypair,
     userAddress: string,
     apiInstance: any,
@@ -562,23 +657,8 @@ async function createPositionWithTPSLOrders(
         tx.setSender(userAddress);
         tx.setGasBudget(1e9);
 
-        const dryRunResult = await client.dryRunTransactionBlock({
-            transactionBlock: await tx.build({
-                client,
-            }),
-        });
-        if (dryRunResult.effects.status.status === 'failure') {
-            console.error(
-                'Failed to dry run transaction: ',
-                dryRunResult.effects.status.error,
-            );
-            throw new Error(dryRunResult.effects.status.error);
-        }
-
-        const res = await client.signAndExecuteTransaction({
-            transaction: tx,
-            signer: keypair,
-        });
+        await simulateOrThrow(client, tx, 'open position');
+        const res = await signAndExecuteTx(client, tx, keypair);
 
         if (res) {
             console.log(
@@ -596,45 +676,34 @@ async function createPositionWithTPSLOrders(
                 process.exit(0);
             }
 
-            await new Promise((resolve) => setTimeout(resolve, 5000));
-            const updatedPositions = await getPositionCaps(client, userAddress);
-
-            if (updatedPositions.length > 0) {
-                // Find the position we just created
-                const symbolToMatch = `${direction ? 'LONG' : 'SHORT'}`;
-                const newPosition = updatedPositions.find(
-                    (pos) =>
-                        pos.key &&
-                        pos.key.symbolKey.direction.includes(symbolToMatch) &&
-                        pos.key.symbolKey.index.includes(config.indexToken),
+            const newPosition = await waitForOpenPosition(
+                userAddress,
+                config,
+                direction,
+            );
+            if (newPosition) {
+                const { takeProfitPrice, stopLossPrice } = calculateTPSLPrices(
+                    indexPrice,
+                    config.takeProfitPercentage,
+                    config.stopLossPercentage,
+                    direction,
                 );
 
-                if (newPosition) {
-                    // Calculate TP/SL prices based on percentages and direction
-                    const { takeProfitPrice, stopLossPrice } =
-                        calculateTPSLPrices(
-                            indexPrice,
-                            config.takeProfitPercentage,
-                            config.stopLossPercentage,
-                            direction,
-                        );
+                await createTPSLOrders(
+                    client,
+                    keypair,
+                    newPosition.id,
+                    config.collateralToken,
+                    collateralTokenType,
+                    config.indexToken,
+                    tradeSize,
+                    direction,
+                    takeProfitPrice,
+                    stopLossPrice,
+                    userAddress,
+                );
 
-                    await createTPSLOrders(
-                        client,
-                        keypair,
-                        newPosition.id,
-                        config.collateralToken,
-                        collateralTokenType,
-                        config.indexToken,
-                        tradeSize,
-                        direction,
-                        takeProfitPrice,
-                        stopLossPrice,
-                        userAddress,
-                    );
-
-                    return true;
-                }
+                return true;
             }
         }
         return false;
@@ -672,31 +741,7 @@ export async function tradeWithTPSL(config: TradeConfig) {
             `Current total volume: $${totalTradedVolumeUSD.toLocaleString()}`,
         );
 
-        switch (config.pool) {
-            case LPToken.ZLP: {
-                apiInstance = getZLPAPIInstance();
-                dataAPIInstance = getZLPDataAPIInstance();
-                deployments = getDeployments(LPToken.ZLP);
-                break;
-            }
-            case LPToken.SLP: {
-                apiInstance = getSLPAPIInstance();
-                dataAPIInstance = getSLPDataAPIInstance();
-                deployments = getDeployments(LPToken.SLP);
-                break;
-            }
-            case LPToken.USDZ: {
-                apiInstance = getUSDZAPIInstance();
-                dataAPIInstance = getUSDZDataAPIInstance();
-                deployments = getDeployments(LPToken.USDZ);
-                break;
-            }
-            default: {
-                apiInstance = getZLPAPIInstance();
-                dataAPIInstance = getZLPDataAPIInstance();
-                deployments = getDeployments(LPToken.ZLP);
-            }
-        }
+        bindPoolApis(config.pool);
 
         let isTrading = false;
         let shouldContinueTrading = true;
@@ -758,33 +803,10 @@ export async function tradeWithTPSL(config: TradeConfig) {
                     `TP/SL for SHORT: TP=${shortPrices.takeProfitPrice.toFixed(4)}, SL=${shortPrices.stopLossPrice.toFixed(4)}`,
                 );
 
-                const positionCaps =
-                    await dataAPIInstance.getPositionCapInfoList(userAddress);
-                const orderCaps =
-                    await dataAPIInstance.getOrderCapInfoList(userAddress);
-
-                // Get all position info (both open and closed)
-                const allPositions = await dataAPIInstance.getPositionInfoList(
-                    positionCaps,
-                    userAddress,
-                );
-
-                // Get position info and filter closed positions
-                const positions = allPositions.filter((ps) => !ps.closed);
-
-                // Get closed positions for our token
-                const closedPositions = allPositions.filter(
-                    (ps) => ps.closed && ps.indexToken === config.indexToken,
-                );
-
-                // Get all orders
-                const orders = await dataAPIInstance.getOrderInfoList(
-                    orderCaps,
-                    userAddress,
-                );
-
-                // Get executed orders
-                const executedOrders = orders.filter((order) => order.executed);
+                const positions = await loadOpenPositions(userAddress, config);
+                const orders = await loadOpenOrders(userAddress, config);
+                const { closedPositions, executedOrders } =
+                    await loadCleanupState(userAddress);
 
                 console.log(`positions: ${positions.length}`);
                 console.log(`orders: ${orders.length}`);
@@ -864,16 +886,10 @@ export async function tradeWithTPSL(config: TradeConfig) {
                     await new Promise((resolve) => setTimeout(resolve, 2000));
 
                     // Refresh position data after closing
-                    const updatedPositionCaps =
-                        await dataAPIInstance.getPositionCapInfoList(
-                            userAddress,
-                        );
-                    const updatedPositions = (
-                        await dataAPIInstance.getPositionInfoList(
-                            updatedPositionCaps,
-                            userAddress,
-                        )
-                    ).filter((ps) => !ps.closed);
+                    const updatedPositions = await loadOpenPositions(
+                        userAddress,
+                        config,
+                    );
 
                     // Get fresh prices
                     const freshIndexPrice = await fetchPrice(config.indexToken);
@@ -1157,7 +1173,7 @@ export async function tradeWithTPSL(config: TradeConfig) {
 
 // create take profit/stop loss order function
 async function createTPSLOrders(
-    client: SuiClient,
+    client: ZoSuiClient,
     signer: Ed25519Keypair,
     positionId: string,
     collateralToken: string,
@@ -1219,23 +1235,8 @@ async function createTPSLOrders(
             tx1.setSender(userAddress);
             tx1.setGasBudget(1e9);
 
-            const dryRunResult = await client.dryRunTransactionBlock({
-                transactionBlock: await tx1.build({
-                    client,
-                }),
-            });
-            if (dryRunResult.effects.status.status === 'failure') {
-                console.error(
-                    'Failed to dry run transaction: ',
-                    dryRunResult.effects.status.error,
-                );
-                throw new Error(dryRunResult.effects.status.error);
-            }
-
-            const res1 = await client.signAndExecuteTransaction({
-                transaction: tx1,
-                signer,
-            });
+            await simulateOrThrow(client, tx1, 'take profit order');
+            const res1 = await signAndExecuteTx(client, tx1, signer);
 
             if (res1) {
                 console.log(
@@ -1284,23 +1285,8 @@ async function createTPSLOrders(
             tx2.setSender(userAddress);
             tx2.setGasBudget(1e9);
 
-            const dryRunResult = await client.dryRunTransactionBlock({
-                transactionBlock: await tx2.build({
-                    client,
-                }),
-            });
-            if (dryRunResult.effects.status.status === 'failure') {
-                console.error(
-                    'Failed to dry run transaction: ',
-                    dryRunResult.effects.status.error,
-                );
-                throw new Error(dryRunResult.effects.status.error);
-            }
-
-            const res2 = await client.signAndExecuteTransaction({
-                transaction: tx2,
-                signer,
-            });
+            await simulateOrThrow(client, tx2, 'stop loss order');
+            const res2 = await signAndExecuteTx(client, tx2, signer);
 
             if (res2) {
                 console.log(
@@ -1316,7 +1302,7 @@ async function createTPSLOrders(
 // Helper function to create positions (extracted for reuse)
 async function createPositionsIfNeeded(
     config: TradeConfig,
-    client: SuiClient,
+    client: ZoSuiClient,
     keypair: Ed25519Keypair,
     userAddress: string,
     apiInstance: TradingAPI,
@@ -1459,31 +1445,7 @@ export async function tradeWithMarketOrder(config: TradeConfig) {
             console.log(`Will also create opposite position for hedging`);
         }
 
-        switch (config.pool) {
-            case LPToken.ZLP: {
-                apiInstance = getZLPAPIInstance();
-                dataAPIInstance = getZLPDataAPIInstance();
-                deployments = getDeployments(LPToken.ZLP);
-                break;
-            }
-            case LPToken.SLP: {
-                apiInstance = getSLPAPIInstance();
-                dataAPIInstance = getSLPDataAPIInstance();
-                deployments = getDeployments(LPToken.SLP);
-                break;
-            }
-            case LPToken.USDZ: {
-                apiInstance = getUSDZAPIInstance();
-                dataAPIInstance = getUSDZDataAPIInstance();
-                deployments = getDeployments(LPToken.USDZ);
-                break;
-            }
-            default: {
-                apiInstance = getZLPAPIInstance();
-                dataAPIInstance = getZLPDataAPIInstance();
-                deployments = getDeployments(LPToken.ZLP);
-            }
-        }
+        bindPoolApis(config.pool);
 
         let isTrading = false;
         let shouldContinueTrading = true;
@@ -1512,34 +1474,11 @@ export async function tradeWithMarketOrder(config: TradeConfig) {
                     `current price: ${config.indexToken} = ${indexPrice}, ${config.collateralToken} = ${collateralPrice}`,
                 );
 
-                const positionCaps =
-                    await dataAPIInstance.getPositionCapInfoList(userAddress);
-                const orderCaps =
-                    await dataAPIInstance.getOrderCapInfoList(userAddress);
-
-                // Get all position info (both open and closed)
-                const allPositions = await dataAPIInstance.getPositionInfoList(
-                    positionCaps,
-                    userAddress,
-                );
-
-                // Get position info and filter closed positions
-                const positions = allPositions.filter((ps) => !ps.closed);
-
-                // Get closed positions
-                const closedPositions = allPositions.filter((ps) => ps.closed);
-
-                // Get all orders
-                const orders = await dataAPIInstance.getOrderInfoList(
-                    orderCaps,
-                    userAddress,
-                );
-
-                // Get executed orders
-                const executedOrders = orders.filter((order) => order.executed);
+                const positions = await loadOpenPositions(userAddress, config);
+                const { closedPositions, executedOrders } =
+                    await loadCleanupState(userAddress);
 
                 console.log(`positions: ${positions.length}`);
-                console.log(`orders: ${orders.length}`);
 
                 // Clear closed positions and executed orders
                 await clearPositionsAndOrders(
@@ -1587,16 +1526,10 @@ export async function tradeWithMarketOrder(config: TradeConfig) {
                     await new Promise((resolve) => setTimeout(resolve, 5000));
 
                     // Refresh position data after closing
-                    const updatedPositionCaps =
-                        await dataAPIInstance.getPositionCapInfoList(
-                            userAddress,
-                        );
-                    const updatedPositions = (
-                        await dataAPIInstance.getPositionInfoList(
-                            updatedPositionCaps,
-                            userAddress,
-                        )
-                    ).filter((ps) => !ps.closed);
+                    const updatedPositions = await loadOpenPositions(
+                        userAddress,
+                        config,
+                    );
 
                     // Get fresh prices
                     const freshIndexPrice = await fetchPrice(config.indexToken);
@@ -1650,7 +1583,7 @@ export async function tradeWithMarketOrder(config: TradeConfig) {
 
 // Function to clear closed positions and executed orders
 async function clearPositionsAndOrders(
-    client: SuiClient,
+    client: ZoSuiClient,
     signer: Ed25519Keypair,
     closedPositions: any[],
     executedOrders: any[],
@@ -1723,26 +1656,8 @@ async function clearPositionsAndOrders(
         txb.setSender(userAddress);
         txb.setGasBudget(1e9);
 
-        // Dry run the transaction
-        const dryRunResult = await client.dryRunTransactionBlock({
-            transactionBlock: await txb.build({
-                client,
-            }),
-        });
-
-        if (dryRunResult.effects.status.status === 'failure') {
-            console.error(
-                'Failed to dry run clearing transaction: ',
-                dryRunResult.effects.status.error,
-            );
-            throw new Error(dryRunResult.effects.status.error);
-        }
-
-        // Execute the transaction
-        const result = await client.signAndExecuteTransaction({
-            transaction: txb,
-            signer,
-        });
+        await simulateOrThrow(client, txb, 'clear positions and orders');
+        const result = await signAndExecuteTx(client, txb, signer);
 
         console.log(
             `Cleared positions and orders, transaction id: ${result?.digest}`,

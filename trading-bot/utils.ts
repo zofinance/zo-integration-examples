@@ -1,77 +1,68 @@
-import {
-    GetCoinsParams,
-    GetOwnedObjectsParams,
-} from '@mysten/sui/jsonRpc';
-import type { SuiClient } from '@zofai/zo-sdk';
+import type { ZoSuiClient } from './connection';
 import { Transaction } from '@mysten/sui/transactions';
 import { DEFAULT_RELAYER_FEE } from './constants';
 
 export async function GetOwnedObjects(
-    client: SuiClient,
+    client: ZoSuiClient,
     owner: string,
     packageId: string,
     module: string,
 ): Promise<any[]> {
     let objects: any[] = [];
-    let options: GetOwnedObjectsParams = {
-        owner: owner,
-        limit: 50,
-        options: {
-            showType: true,
-            showDisplay: true,
-            showContent: true,
-        },
-        filter: {
-            MoveModule: {
-                module: module,
-                package: packageId,
-            },
-        },
-    };
-
+    let cursor: string | null | undefined;
     while (true) {
-        let resp = await client.getOwnedObjects(options);
-        for (let item of resp.data) {
+        const resp = await client.getOwnedObjects({
+            owner,
+            limit: 50,
+            cursor,
+            options: {
+                showType: true,
+                showContent: true,
+            },
+            filter: {
+                MoveModule: {
+                    module,
+                    package: packageId,
+                },
+            },
+        });
+        for (const item of resp.data) {
             if (item.data) {
                 objects.push(item.data);
             }
         }
         if (!resp.hasNextPage) {
             break;
-        } else {
-            options.cursor = resp.nextCursor;
         }
+        cursor = resp.nextCursor;
     }
     return objects;
 }
 
 export async function GetAllCoin(
-    client: SuiClient,
+    client: ZoSuiClient,
     owner: string,
     coinType: string,
 ): Promise<any[]> {
     let allCoins: any[] = [];
-    let nextCursor = '';
+    let cursor: string | null | undefined;
     while (true) {
-        let params: GetCoinsParams = { owner: owner, coinType: coinType };
-        if (nextCursor != '') {
-            params.cursor = nextCursor;
-        }
-        let resp = await client.getCoins(params);
+        const resp = await client.getCoins({
+            owner,
+            coinType,
+            cursor,
+        });
         allCoins = [...allCoins, ...resp.data];
-
         if (!resp.hasNextPage) {
             break;
         }
-        if (resp.nextCursor != null && resp.nextCursor != undefined) {
-            nextCursor = resp.nextCursor;
-        }
+        cursor = resp.nextCursor;
     }
     return allCoins;
 }
 
 export async function SplitCoins(
-    client: SuiClient,
+    client: ZoSuiClient,
     owner: string,
     coinType: string,
     txb: Transaction,

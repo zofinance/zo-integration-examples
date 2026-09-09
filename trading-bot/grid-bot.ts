@@ -6,6 +6,8 @@
 import {
     getConnection,
     getAPIAndDataAPI,
+    simulateOrThrow,
+    signAndExecuteTx,
     type TradingAPI,
 } from './connection';
 import { getKeypair } from './keypair';
@@ -17,6 +19,8 @@ import {
 import { DEFAULT_SLIPPAGE } from './constants';
 import BigNumber from 'bignumber.js';
 import { getDeployments } from './deployments';
+import { fetchTokenUsdPrice } from './prices';
+import { fetchTraderPositionsFromApi } from './indexer';
 import { LPToken } from '@zofai/zo-sdk';
 import type { IBasePositionInfo } from '@zofai/zo-sdk';
 
@@ -38,24 +42,6 @@ export interface GridBotConfig {
     pollIntervalMs: number;
     /** Optional max total volume in USD before stopping */
     maxVolumeUSD?: number;
-}
-
-async function fetchPrice(token: string): Promise<number> {
-    const parsedToken = token === 'nusdc' ? 'usdc' : token;
-    const url = `https://api.binance.com/api/v3/ticker/price?symbol=${parsedToken.toUpperCase()}USDT`;
-    const response = await fetch(url);
-    if (!response.ok) {
-        throw new Error(`Failed to fetch price for ${token}: HTTP ${response.status}`);
-    }
-    const data = await response.json();
-    if (!data?.price) {
-        throw new Error(`Invalid response from Binance API for ${token}`);
-    }
-    const price = parseFloat(data.price);
-    if (!Number.isFinite(price) || price <= 0) {
-        throw new Error(`Invalid price value for ${token}: ${data.price}`);
-    }
-    return price;
 }
 
 /** Build grid level prices (linear spacing) */
@@ -94,6 +80,7 @@ export async function runGridBot(config: GridBotConfig): Promise<void> {
     const keypair = getKeypair();
     const userAddress = keypair.getPublicKey().toSuiAddress();
     const { api, dataAPI } = getAPIAndDataAPI(config.pool);
+    const fetchPrice = (token: string) => fetchTokenUsdPrice(api, token);
     const deployments = getDeployments(config.pool);
     const coinType = deployments.coins[config.collateralToken].module;
     const gridPrices = buildGridPrices(
@@ -162,7 +149,8 @@ export async function runGridBot(config: GridBotConfig): Promise<void> {
         );
         tx.setSender(userAddress);
         tx.setGasBudget(1e9);
-        const res = await client.signAndExecuteTransaction({ transaction: tx, signer: keypair });
+        await simulateOrThrow(client, tx, 'grid trade');
+        const res = await signAndExecuteTx(client, tx, keypair);
         if (res?.digest) {
             const sizeUSD =
                 (Number(config.orderSize) * indexPrice) /
@@ -209,7 +197,8 @@ export async function runGridBot(config: GridBotConfig): Promise<void> {
         );
         tx.setSender(userAddress);
         tx.setGasBudget(1e9);
-        const res = await client.signAndExecuteTransaction({ transaction: tx, signer: keypair });
+        await simulateOrThrow(client, tx, 'grid trade');
+        const res = await signAndExecuteTx(client, tx, keypair);
         if (res?.digest) {
             const sizeUSD = Number(position.positionSize);
             totalTradedVolumeUSD += sizeUSD;
@@ -235,14 +224,18 @@ export async function runGridBot(config: GridBotConfig): Promise<void> {
             return;
         }
 
-        const positionCaps = await dataAPI.getPositionCapInfoList(userAddress);
-        const allPositions = await dataAPI.getPositionInfoList(positionCaps, userAddress);
-        const openLongs = allPositions.filter(
-            (p) =>
-                p.indexToken === config.indexToken &&
-                p.long &&
-                !p.closed,
-        );
+        const openLongs = (
+            await fetchTraderPositionsFromApi(
+                userAddress,
+                config.pool,
+                deployments,
+                {
+                    status: 'OPEN',
+                    indexToken: config.indexToken,
+                    collateralToken: config.collateralToken,
+                },
+            )
+        ).filter((p) => p.long && !p.closed);
 
         if (currentLevel < lastGridIndex) {
             // Price moved down: add a long (open one new position)

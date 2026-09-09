@@ -64,9 +64,9 @@ Before running, edit the config in the corresponding file (see below).
 ### How the bot connects to ZO
 
 1. **Connection** (`connection.ts`)
-   - Builds a `SuiClient` from `SUI_MAINNET_RPC_URL` or `SUI_TESTNET_RPC_URL` and `NETWORK`.
+   - Builds a gRPC Sui client via zo-sdk `createSuiProvider` (or `SUI_*_RPC_URL` as gRPC `baseUrl`).
    - Uses **@zofai/zo-sdk** `SDK.getInstance()` to create typed API/DataAPI instances for ZLP, SLP, and USDZ.
-   - ZO API: `https://api.zofinance.io`. Hermes / Pyth Pro: `https://hermes.zofinance.io`.
+   - ZO API: `https://api.zofinance.io`. Hermes / Pyth Pro: `https://api.zofinance.io`.
 
 2. **Keypair** (`keypair.ts`)
    - Loads `PRIVATE_KEY` from env and creates an `Ed25519Keypair` via `decodeSuiPrivateKey` + `Ed25519Keypair.fromSecretKey`.
@@ -77,8 +77,11 @@ Before running, edit the config in the corresponding file (see below).
 
 4. **Trading methods (Pyth Pro / V3)**
    - Opens use `openPositionV3`; closes and TP/SL use `decreasePositionV3`.
+   - Add collateral with `pledgeInPosition` (no oracle). Withdraw collateral with `redeemFromPositionV3` (SLP) or `redeemFromPositionV2` (ZLP / USDZ) plus Pyth Pro bytes.
+   - Helpers: `pledgeInOpenPosition` / `redeemFromOpenPosition` in `trade.ts`.
    - Before each trade, call `api.fetchPythProUpdateBytesForTokens([collateral, index])` and pass the bytes into the V3 method.
-   - Legacy `openPositionV2` / `decreasePositionV2` still exist in the SDK but are not recommended for new integrations.
+   - Live account state uses ZO API `/trader-positions` and `/open-orders` only (no RPC `getPositionInfoList` hydrate, which 404s on leftover caps).
+   - Reference prices use `getLatestPythProPricesForTokens` (Pyth Pro), with Binance as fallback.
 
 ### Config for market / TPSL bot
 
@@ -114,7 +117,7 @@ pnpm run grid
 | `grid-bot-run.ts` | Grid bot entry; defines grid config and calls `runGridBot`. |
 | `grid-bot.ts` | Grid bot logic (place/cancel orders, rebalance grid). |
 | `trade.ts` | Core trading: open/close positions, TPSL and market flows. |
-| `connection.ts` | Sui client and ZO SDK API/DataAPI instances (ZLP/SLP/USDZ). |
+| `connection.ts` | Shared gRPC Sui client and ZO SDK API (`createAPI` + `NETWORK`). |
 | `keypair.ts` | Loads `PRIVATE_KEY` from env and returns Ed25519 keypair. |
 | `network.ts` | Reads `NETWORK` from env (mainnet/testnet). |
 | `order.ts` | Order caps and order key parsing. |
@@ -125,8 +128,8 @@ pnpm run grid
 
 ### Dependencies
 
-- **@zofai/zo-sdk** (`^0.2.30`) – ZO protocol API and types (pools, positions, orders; Pyth Pro V3 trading).
-- **@mysten/sui** (`^2.4.0`) – Sui client, keypair, transactions (required by zo-sdk 0.2.x).
+- **@zofai/zo-sdk** (`^0.3.17`) – ZO protocol API and types (pools, positions, orders; Pyth Pro V3 trading; gRPC Sui client).
+- **@mysten/sui** (`^2.4.0`) – Sui keypair and transactions (zo-sdk 0.3.x uses `SuiGrpcClient`).
 - **dotenv** – Loads `.env` into `process.env`.
 - **bignumber.js** – Numeric handling for sizes and fees.
 

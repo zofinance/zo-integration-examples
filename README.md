@@ -47,7 +47,7 @@ See [`trading-bot/README.md`](./trading-bot/README.md) for env vars, `TradeConfi
 | [`@zofai/trading-widget`](https://www.npmjs.com/package/@zofai/trading-widget) | Ready-made trading UI for React |
 | [`@zofai/zo-sdk`](https://www.npmjs.com/package/@zofai/zo-sdk) | TypeScript SDK for ZLP / SLP / USDZ (reads + transaction builders) |
 
-Current examples target **`@zofai/zo-sdk` ^0.2.x** (Pyth Pro / V3 market methods).
+Current examples target **`@zofai/zo-sdk` ^0.3.17** (Pyth Pro / V3 market methods, gRPC Sui client).
 
 ## Security
 

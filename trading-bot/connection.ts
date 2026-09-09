@@ -1,155 +1,148 @@
-import { SuiJsonRpcClient } from '@mysten/sui/jsonRpc';
+import { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
+import { SuiGrpcClient } from '@mysten/sui/grpc';
+import type { Transaction } from '@mysten/sui/transactions';
 import {
     SDK,
     Network,
     LPToken,
+    createSuiProvider,
+    withJsonRpcCompat,
     type IZLPAPI,
     type ISLPAPI,
     type IUSDZAPI,
-    type IZLPDataAPI,
-    type ISLPDataAPI,
-    type IUSDZDataAPI,
     type IBaseDataAPI,
-    type SuiClient,
 } from '@zofai/zo-sdk';
 import { NETWORK } from './network';
 
 /**
- * Typed trading API with openPositionV3 / decreasePositionV3 (Pyth Pro).
- * Concrete API classes also implement IBaseDataAPI (incl. fetchPythProUpdateBytesForTokens).
+ * Typed trading API with V3 Pyth Pro methods plus DataAPI reads
+ * (`fetchPythProUpdateBytesForTokens`, `getTraderOpenPositionInfoList`, …).
  */
 export type TradingAPI = (IZLPAPI | ISLPAPI | IUSDZAPI) & IBaseDataAPI;
-export type TradingDataAPI = IZLPDataAPI | ISLPDataAPI | IUSDZDataAPI;
+export type TradingDataAPI = IBaseDataAPI;
+
+/** gRPC client plus JSON-RPC-compat helpers from zo-sdk (`getCoins`, `getOwnedObjects`, …). */
+export type ZoSuiClient = ReturnType<typeof createSuiProvider>;
 
 export const ZO_API_ENDPOINT = 'https://api.zofinance.io';
 /** ZO-hosted Hermes / Pyth Pro proxy (see zo-sdk getting-started docs). */
-export const HERMES_URL = 'https://hermes.zofinance.io';
+export const HERMES_URL = 'https://api.zofinance.io';
 
-export function getConnection(): SuiClient {
-    let rpcUrl: string;
+let provider: ZoSuiClient | null = null;
 
-    if (NETWORK === Network.MAINNET) {
-        rpcUrl =
-            process.env.SUI_MAINNET_RPC_URL ||
-            'https://fullnode.mainnet.sui.io:443';
-    } else if (NETWORK === Network.TESTNET) {
-        rpcUrl =
-            process.env.SUI_TESTNET_RPC_URL ||
-            'https://fullnode.testnet.sui.io:443';
-    } else {
-        throw new Error(`unsupported network: ${NETWORK}`);
+export function getConnection(): ZoSuiClient {
+    if (provider) {
+        return provider;
     }
 
-    // Sui SDK 2.x: SuiJsonRpcClient replaces the removed SuiClient class
-    return new SuiJsonRpcClient({
-        url: rpcUrl,
-        network: NETWORK === Network.TESTNET ? 'testnet' : 'mainnet',
-    });
+    const customUrl =
+        NETWORK === Network.TESTNET
+            ? process.env.SUI_TESTNET_RPC_URL
+            : process.env.SUI_MAINNET_RPC_URL;
+
+    if (customUrl) {
+        const network = NETWORK === Network.TESTNET ? 'testnet' : 'mainnet';
+        provider = withJsonRpcCompat(
+            new SuiGrpcClient({ network, baseUrl: customUrl }),
+        );
+    } else {
+        provider = createSuiProvider(NETWORK);
+    }
+
+    return provider;
 }
 
-export function getZLPAPIInstance(
-    network: Network = Network.MAINNET,
-    apiEndpoint = ZO_API_ENDPOINT,
-    connectionURL = HERMES_URL,
-): TradingAPI {
-    return SDK.getInstance().createZLPAPI(
-        network,
+export function getTradingAPI(pool: LPToken = LPToken.ZLP): TradingAPI {
+    return SDK.getInstance().createAPI(
+        NETWORK,
         getConnection(),
-        apiEndpoint,
-        connectionURL,
+        ZO_API_ENDPOINT,
+        HERMES_URL,
+        pool,
     ) as TradingAPI;
 }
 
-export function getSLPAPIInstance(
-    network: Network = Network.MAINNET,
-    apiEndpoint = ZO_API_ENDPOINT,
-    connectionURL = HERMES_URL,
-): TradingAPI {
-    return SDK.getInstance().createSLPAPI(
-        network,
-        getConnection(),
-        apiEndpoint,
-        connectionURL,
-    ) as TradingAPI;
+export function getZLPAPIInstance(): TradingAPI {
+    return getTradingAPI(LPToken.ZLP);
 }
 
-export function getUSDZAPIInstance(
-    network: Network = Network.MAINNET,
-    apiEndpoint = ZO_API_ENDPOINT,
-    connectionURL = HERMES_URL,
-): TradingAPI {
-    return SDK.getInstance().createUSDZAPI(
-        network,
-        getConnection(),
-        apiEndpoint,
-        connectionURL,
-    ) as TradingAPI;
+export function getSLPAPIInstance(): TradingAPI {
+    return getTradingAPI(LPToken.SLP);
 }
 
-export function getZLPDataAPIInstance(
-    network: Network = Network.MAINNET,
-    apiEndpoint = ZO_API_ENDPOINT,
-    connectionURL = HERMES_URL,
-): IZLPDataAPI {
-    return SDK.getInstance().createZLPDataAPI(
-        network,
-        getConnection(),
-        apiEndpoint,
-        connectionURL,
-    );
+export function getUSDZAPIInstance(): TradingAPI {
+    return getTradingAPI(LPToken.USDZ);
 }
 
-export function getSLPDataAPIInstance(
-    network: Network = Network.MAINNET,
-    apiEndpoint = ZO_API_ENDPOINT,
-    connectionURL = HERMES_URL,
-): ISLPDataAPI {
-    return SDK.getInstance().createSLPDataAPI(
-        network,
-        getConnection(),
-        apiEndpoint,
-        connectionURL,
-    );
+export function getZLPDataAPIInstance(): TradingDataAPI {
+    return getZLPAPIInstance();
 }
 
-export function getUSDZDataAPIInstance(
-    network: Network = Network.MAINNET,
-    apiEndpoint = ZO_API_ENDPOINT,
-    connectionURL = HERMES_URL,
-): IUSDZDataAPI {
-    return SDK.getInstance().createUSDZDataAPI(
-        network,
-        getConnection(),
-        apiEndpoint,
-        connectionURL,
-    );
+export function getSLPDataAPIInstance(): TradingDataAPI {
+    return getSLPAPIInstance();
 }
 
-/** Resolve trading + data API for a pool. */
+export function getUSDZDataAPIInstance(): TradingDataAPI {
+    return getUSDZAPIInstance();
+}
+
+/** Resolve trading + data API for a pool (same instance: API extends DataAPI). */
 export function getAPIAndDataAPI(pool: LPToken): {
     api: TradingAPI;
     dataAPI: TradingDataAPI;
 } {
-    switch (pool) {
-        case LPToken.ZLP:
-            return {
-                api: getZLPAPIInstance(),
-                dataAPI: getZLPDataAPIInstance(),
-            };
-        case LPToken.SLP:
-            return {
-                api: getSLPAPIInstance(),
-                dataAPI: getSLPDataAPIInstance(),
-            };
-        case LPToken.USDZ:
-            return {
-                api: getUSDZAPIInstance(),
-                dataAPI: getUSDZDataAPIInstance(),
-            };
-        default:
-            return {
-                api: getZLPAPIInstance(),
-                dataAPI: getZLPDataAPIInstance(),
-            };
+    const api = getTradingAPI(pool);
+    return { api, dataAPI: api };
+}
+
+/** Simulate a PTB on gRPC (`simulateTransaction` replaces JSON-RPC dryRun). */
+export async function simulateOrThrow(
+    client: ZoSuiClient,
+    tx: Transaction,
+    label = 'transaction',
+): Promise<void> {
+    const result = await client.simulateTransaction({
+        transaction: tx,
+        include: { effects: true },
+    });
+    const executed = result.Transaction ?? result.FailedTransaction;
+    const failed =
+        result.$kind === 'FailedTransaction' ||
+        executed?.status.success === false;
+    if (failed) {
+        const error =
+            executed?.status && executed.status.success === false
+                ? JSON.stringify(executed.status.error)
+                : `${label} simulation failed`;
+        console.error(`Failed to simulate ${label}: `, error);
+        throw new Error(error);
     }
+}
+
+export async function signAndExecuteTx(
+    client: ZoSuiClient,
+    tx: Transaction,
+    signer: Ed25519Keypair,
+): Promise<{ digest?: string }> {
+    const res = await client.signAndExecuteTransaction({
+        transaction: tx,
+        signer,
+        include: { effects: true },
+    });
+    const executed = res.Transaction ?? res.FailedTransaction;
+    const digest = executed?.digest;
+    if (digest) {
+        await client.waitForTransaction({ digest });
+    }
+    const failed =
+        res.$kind === 'FailedTransaction' ||
+        executed?.status.success === false;
+    if (failed) {
+        const error =
+            executed?.status && executed.status.success === false
+                ? JSON.stringify(executed.status.error)
+                : 'transaction execution failed';
+        throw new Error(error);
+    }
+    return { digest };
 }

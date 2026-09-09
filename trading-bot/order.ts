@@ -1,7 +1,7 @@
 import { getKeypair } from './keypair';
 import { deployments } from './deployments';
 import { GetOwnedObjects, SplitCoins } from './utils';
-import type { SuiClient } from '@zofai/zo-sdk';
+import type { ZoSuiClient } from './connection';
 
 export interface OrderKey {
     vaultKey: string;
@@ -60,7 +60,7 @@ export function isOrderCap(typeStr: string): boolean {
     return typeStr.includes('::market::OrderCap<');
 }
 
-export async function getOrderCaps(client: SuiClient, sender: string = '') {
+export async function getOrderCaps(client: ZoSuiClient, sender: string = '') {
     try {
         // if sender is not provided, use the address of the current keypair
         if (!sender) {
@@ -100,15 +100,13 @@ export async function getOrderCaps(client: SuiClient, sender: string = '') {
     }
 }
 
-export async function getOrderDetails(client: SuiClient, orderId: string) {
+export async function getOrderDetails(client: ZoSuiClient, orderId: string) {
     try {
         const result = await client.getObject({
             id: orderId,
             options: {
                 showContent: true,
                 showType: true,
-                showOwner: true,
-                showDisplay: true,
             },
         });
 

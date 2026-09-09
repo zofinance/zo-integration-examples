@@ -1,10 +1,9 @@
 import { createDAppKit } from '@mysten/dapp-kit-react'
 import { SuiGrpcClient } from '@mysten/sui/grpc'
-import { getJsonRpcFullnodeUrl } from '@mysten/sui/jsonRpc'
 
 const GRPC_URLS = {
   testnet: 'https://fullnode.testnet.sui.io:443',
-  mainnet: getJsonRpcFullnodeUrl('mainnet'),
+  mainnet: 'https://fullnode.mainnet.sui.io:443',
 }
 
 export const dAppKit = createDAppKit({
