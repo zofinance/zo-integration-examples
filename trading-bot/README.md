@@ -72,10 +72,15 @@ Before running, edit the config in the corresponding file (see below).
    - Loads `PRIVATE_KEY` from env and creates an `Ed25519Keypair` via `decodeSuiPrivateKey` + `Ed25519Keypair.fromSecretKey`.
    - Used for signing all Sui transactions (opens/closes positions, places/cancels orders).
 
-3. **Trade config**
+3. **Bot trader verification** (`bot-trader.ts`)
+   - Before any trading loop starts, calls ZO API `POST /bot-traders/challenge`, signs the exact `data.message` with `signPersonalMessage`, then `POST /bot-traders/verify`.
+   - Skips signing if `alreadyVerified` or `GET /bot-traders/:address` reports `verified: true`.
+   - Challenge expires in 10 minutes.
+
+4. **Trade config**
    - You choose pool (`LPToken.ZLP`, `LPToken.SLP`, or `LPToken.USDZ`), index token (e.g. `btc`), collateral (e.g. `nusdc`), sizes, and (for TPSL) take-profit/stop-loss percentages.
 
-4. **Trading methods (Pyth Pro / V3)**
+5. **Trading methods (Pyth Pro / V3)**
    - Opens use `openPositionV3`; closes and TP/SL use `decreasePositionV3`.
    - Add collateral with `pledgeInPosition` (no oracle). Withdraw collateral with `redeemFromPositionV3` (SLP) or `redeemFromPositionV2` (ZLP / USDZ) plus Pyth Pro bytes.
    - Helpers: `pledgeInOpenPosition` / `redeemFromOpenPosition` in `trade.ts`.
@@ -119,6 +124,7 @@ pnpm run grid
 | `trade.ts` | Core trading: open/close positions, TPSL and market flows. |
 | `connection.ts` | Shared gRPC Sui client and ZO SDK API (`createAPI` + `NETWORK`). |
 | `keypair.ts` | Loads `PRIVATE_KEY` from env and returns Ed25519 keypair. |
+| `bot-trader.ts` | ZO API bot-trader challenge / personal-message verify gate. |
 | `network.ts` | Reads `NETWORK` from env (mainnet/testnet). |
 | `order.ts` | Order caps and order key parsing. |
 | `position.ts` | Position helpers. |

@@ -11,6 +11,7 @@ import {
     type TradingAPI,
 } from './connection';
 import { getKeypair } from './keypair';
+import { ensureBotTraderVerified } from './bot-trader';
 import {
     calculateRelayerFeeInToken,
     calculateReserveAmount,
@@ -79,6 +80,9 @@ export async function runGridBot(config: GridBotConfig): Promise<void> {
     const client = getConnection();
     const keypair = getKeypair();
     const userAddress = keypair.getPublicKey().toSuiAddress();
+
+    await ensureBotTraderVerified(keypair);
+
     const { api, dataAPI } = getAPIAndDataAPI(config.pool);
     const fetchPrice = (token: string) => fetchTokenUsdPrice(api, token);
     const deployments = getDeployments(config.pool);

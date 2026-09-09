@@ -10,6 +10,7 @@ import {
     type ZoSuiClient,
 } from './connection';
 import { getKeypair } from './keypair';
+import { ensureBotTraderVerified } from './bot-trader';
 import {
     calculateRelayerFeeInToken,
     calculateReserveAmount,
@@ -722,6 +723,8 @@ export async function tradeWithTPSL(config: TradeConfig) {
         const client = getConnection();
         const keypair = getKeypair();
         const userAddress = keypair.getPublicKey().toSuiAddress();
+
+        await ensureBotTraderVerified(keypair);
 
         console.log(`Using address: ${userAddress}`);
         console.log(
@@ -1436,6 +1439,8 @@ export async function tradeWithMarketOrder(config: TradeConfig) {
         const client = getConnection();
         const keypair = getKeypair();
         const userAddress = keypair.getPublicKey().toSuiAddress();
+
+        await ensureBotTraderVerified(keypair);
 
         console.log(`Using address: ${userAddress}`);
         console.log(
